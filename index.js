@@ -1,4 +1,4 @@
-module.exports = function pasteHtmlAtCaret(html) {
+module.exports = function pasteHtmlAtCaret(html, selectPastedContent) {
     var sel, range;
     if (window.getSelection) {
         // IE9 and non-IE
@@ -13,22 +13,34 @@ module.exports = function pasteHtmlAtCaret(html) {
             var el = document.createElement("div");
             el.innerHTML = html;
             var frag = document.createDocumentFragment(), node, lastNode;
-            while ( (node = el.firstChild) ) {
+            while ((node = el.firstChild)) {
                 lastNode = frag.appendChild(node);
             }
+            var firstNode = frag.firstChild;
             range.insertNode(frag);
 
             // Preserve the selection
             if (lastNode) {
                 range = range.cloneRange();
                 range.setStartAfter(lastNode);
-                range.collapse(true);
+                if (selectPastedContent) {
+                    range.setStartBefore(firstNode);
+                } else {
+                    range.collapse(true);
+                }
                 sel.removeAllRanges();
                 sel.addRange(range);
             }
         }
-    } else if (document.selection && document.selection.type !== "Control") {
+    } else if ((sel = document.selection) && sel.type !== "Control") {
         // IE < 9
-        document.selection.createRange().pasteHTML(html);
+        var originalRange = sel.createRange();
+        originalRange.collapse(true);
+        sel.createRange().pasteHTML(html);
+        if (selectPastedContent) {
+            range = sel.createRange();
+            range.setEndPoint("StartToStart", originalRange);
+            range.select();
+        }
     }
 }
